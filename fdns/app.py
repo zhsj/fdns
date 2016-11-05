@@ -50,10 +50,11 @@ class DNSServer:
         self.transport, self.proto = await self.loop.create_datagram_endpoint(
             DNSServerProtocol, local_addr=('127.0.0.1', 9999))
 
+
+def main():
     async def stop(self):
         self.transport.close()
 
-if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     server = DNSServer(loop)
     asyncio.ensure_future(server.start())
@@ -63,3 +64,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         loop.run_until_complete(server.stop())
     loop.close()
+
+if __name__ == '__main__':
+    main()
