@@ -1,17 +1,18 @@
 import asyncio
 import dnslib
-import json
-import urllib.parse
 import logging
+from .provider.http.google import HTTPGoogleResolver
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 _LOG = logging.getLogger(__name__)
 
-DNS_API = 'https://dns.google.com/resolve?name=%s&type=%s&edns_client_subnet=%s' # noqa
 pseudo_edns_client = '202.141.162.124'
 
 
 class DNSServerProtocol(asyncio.DatagramProtocol):
+    def __init__(self):
+        self.resolver = HTTPGoogleResolver()
+
     def connection_made(self, transport):
         self.transport = transport
 
@@ -24,40 +25,20 @@ class DNSServerProtocol(asyncio.DatagramProtocol):
         question = record.questions[0]
         qname = str(question.qname)
         qtype = question.qtype
-        url = DNS_API % (qname, qtype, pseudo_edns_client)
-        data = await self.req(url)
-        answers = json.loads(data).get('Answer')
-        for answer in answers:
-            rtype = dnslib.QTYPE.forward[answer['type']]
-            rr = {
-                'rname': answer['name'],
-                'ttl': answer['TTL'],
-                'rtype': answer['type'],
-                'rdata': getattr(dnslib, rtype)(answer['data'])
+        ans = await self.resolver.resolve(qname, qtype, pseudo_edns_client)
+        for rr in ans:
+            zone_format = "{rname} {ttl} IN {rtype_name} {rdata}"
+            _rr = {
+                'rname': rr[0],
+                'ttl': rr[1],
+                'rtype_name': dnslib.QTYPE.forward[rr[2]],
+                'rdata': rr[3]
             }
-            record.add_answer(dnslib.RR(**rr))
+            zone = zone_format.format(**_rr)
+            _LOG.debug(zone)
+            record.add_answer(*dnslib.RR.fromZone(zone))
         _LOG.info('Send to '+str(addr))
         self.transport.sendto(record.pack(), addr)
-
-    async def req(self, url):
-        url = urllib.parse.urlsplit(url)
-        if url.scheme == 'https':
-            connect = asyncio.open_connection(url.hostname, 443, ssl=True)
-        else:
-            connect = asyncio.open_connection(url.hostname, 80)
-        reader, writer = await connect
-        query = ('GET {path}?{query} HTTP/1.0\r\n'
-                 'Host: {hostname}\r\n'
-                 '\r\n').format(path=url.path, query=url.query,
-                                hostname=url.hostname)
-        writer.write(query.encode())
-        while True:
-            line = await reader.readline()
-            if line == b'\r\n':
-                break
-        data = await reader.readline()
-        writer.close()
-        return data.decode()
 
 
 class DNSServer:
