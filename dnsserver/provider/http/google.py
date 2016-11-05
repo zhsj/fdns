@@ -1,21 +1,31 @@
 import json
-from urllib import request
+import asyncio
 from .base import HTTPResolver
+from .utils import http_get
 
 
-class GoogleResolver(HTTPResolver):
+class HTTPGoogleResolver(HTTPResolver):
     def __init__(self):
         self.end_point = ("https://dns.google.com/resolve?name={qname}&"
                           "type={qtype}&edns_client_subnet={client_ip}")
 
-    def resolve(self, qname, qtype, client_ip):
-        req = request.urlopen(self.end_point.format(qname=qname, qtype=qtype,
-                                                    client_ip=client_ip))
-        result = json.loads(req.read().decode())
-        for ans in result['Answer']:
-            yield (ans['type'], ans['TTL'], ans['data'])
+    async def resolve(self, qname, qtype, client_ip):
+        url = self.end_point.format(
+            qname=qname, qtype=qtype, client_ip=client_ip
+        )
+        data = await http_get(url)
+        result = json.loads(data)
+        return [(ans['type'], ans['TTL'], ans['data'])
+                for ans in result['Answer']]
 
 
 if __name__ == '__main__':
-    print(list(GoogleResolver().resolve('www.cloudflare.com', 'A', '1.1.1.1')))
-    print(list(GoogleResolver().resolve('www.google.com', 'A', '1.1.1.1')))
+    async def test_dns():
+        data = await HTTPGoogleResolver().resolve('www.cloudflare.com',
+                                                  28, '1.1.1.1')
+        print(data)
+        data = await HTTPGoogleResolver().resolve('www.google.com',
+                                                  1, '1.1.1.1')
+        print(data)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(test_dns())
