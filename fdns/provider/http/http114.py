@@ -1,7 +1,7 @@
 import asyncio
 from .base import HTTPResolver
 from .utils import http_get
-from ...utils.qtype import QTYPE
+from dnslib import QTYPE
 
 
 class HTTP114Resolver(HTTPResolver):
