@@ -15,7 +15,7 @@ class HTTPGoogleResolver(HTTPResolver):
         )
         data = await http_get(url)
         result = json.loads(data)
-        return [(ans['type'], ans['TTL'], ans['data'])
+        return [(ans['name'], ans['TTL'], ans['type'], ans['data'])
                 for ans in result['Answer']]
 
 
@@ -25,6 +25,9 @@ if __name__ == '__main__':
                                                   28, '1.1.1.1')
         print(data)
         data = await HTTPGoogleResolver().resolve('www.google.com',
+                                                  1, '1.1.1.1')
+        print(data)
+        data = await HTTPGoogleResolver().resolve('www.baidu.com',
                                                   1, '1.1.1.1')
         print(data)
     loop = asyncio.get_event_loop()

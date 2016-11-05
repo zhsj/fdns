@@ -7,4 +7,8 @@ class HTTPResolver(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def resolve(qname, qtype, client_ip):
+        """
+        Returns:
+            (rname, ttl, rtype, data)
+        """
         pass

@@ -18,7 +18,12 @@ class HTTP114Resolver(HTTPResolver):
         data = await http_get(url)
         if len(data) < 1:
             return None
-        return [(qtype, *reversed(ans.split(','))) for ans in data.split(';')]
+
+        def gen_rr(ans):
+            d, ttl = ans.split(',', 1)
+            return (qname, ttl, qtype, d)
+
+        return [gen_rr(ans) for ans in data.split(';')]
 
 
 if __name__ == '__main__':

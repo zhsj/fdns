@@ -19,7 +19,7 @@ class HTTPDNSPodResolver(HTTPResolver):
         if len(result) != 2:
             return None
         ttl = result[1]
-        return [(1, ttl, ans) for ans in result[0].split(';')]
+        return [(qname, ttl, 1, ans) for ans in result[0].split(';')]
 
 
 if __name__ == '__main__':
